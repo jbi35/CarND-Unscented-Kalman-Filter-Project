@@ -37,3 +37,10 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
   //return the result
   return rmse;
 }
+
+VectorXd Tools::Polar2Cartesian(const double rho, const double phi) {
+  VectorXd result;
+  result = VectorXd(2);
+  result << rho * cos(phi), rho * sin(phi);
+  return result;
+}
