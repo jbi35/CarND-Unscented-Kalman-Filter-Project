@@ -17,6 +17,9 @@ public:
   ///* initially set to false, set to true in first call of ProcessMeasurement
   bool is_initialized_;
 
+  ///*  previous timestamp
+  long previous_timestamp_;
+
   ///* if this is false, laser measurements will be ignored (except for init)
   bool use_laser_;
 
@@ -56,6 +59,12 @@ public:
   ///* Radar measurement noise standard deviation radius change in m/s
   double std_radrd_ ;
 
+  // radar measurement covariance
+  Eigen::MatrixXd R_radar_;
+
+  // laser measurement covariance
+  Eigen::MatrixXd R_lidar_;
+
   ///* Weights of sigma points
   VectorXd weights_;
 
@@ -68,11 +77,22 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
+  ///* number of sigma points
+  int n_sigma_;
+
   ///* the current NIS for radar
   double NIS_radar_;
 
   ///* the current NIS for laser
   double NIS_laser_;
+
+  ///* Process noise
+  VectorXd process_noise_;
+
+  /**
+  * Tools object to compute Jacobian and polar coordinates.
+  */
+  Tools tools_;
 
   /**
    * Constructor
@@ -108,6 +128,41 @@ public:
    * @param meas_package The measurement at k+1
    */
   void UpdateRadar(MeasurementPackage meas_package);
+
+  /**
+  * Initialize state with proper values
+  */
+  void Init(const MeasurementPackage &measurement_pack);
+  
+
+  VectorXd ComputeWeightVector();
+
+  /**
+  * generate sigma points
+  */
+  MatrixXd GenerateAugmentedSigmaPoints(const VectorXd& x, const MatrixXd& P,
+                                        const VectorXd& process_noise);
+
+
+  MatrixXd PredictSigmaPoints(const MatrixXd& Xsig_aug, double delta_t);
+
+
+  void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out,
+                                const MatrixXd& Xsig_pred);
+
+
+  MatrixXd  ExtractRADARDataFromSigmaPoints(const MatrixXd& Xsig_pred);
+
+
+  MatrixXd  ExtractLIDARDataFromSigmaPoints(const MatrixXd& Xsig_pred);
+
+
+  MatrixXd CalculateCrossCorrelationMatrix(const MatrixXd& Xsig,
+                                           const VectorXd& x,
+                                           const MatrixXd& Zsig,
+                                           const VectorXd& z);
+
+
 };
 
 #endif /* UKF_H */

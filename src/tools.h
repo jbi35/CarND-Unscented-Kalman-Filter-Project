@@ -26,6 +26,11 @@ public:
   */
   Eigen::VectorXd Polar2Cartesian(const double rho, const double phi);
 
+  /**
+  * A helper method to normalize angle component of state vector to -pi pi
+  */
+  void NormalizeAngle(Eigen::VectorXd& z, int index);
+
 };
 
 #endif /* TOOLS_H_ */
