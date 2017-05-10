@@ -131,38 +131,51 @@ public:
 
   /**
   * Initialize state with proper values
+  * @param meas_package The measurement at k+1
   */
   void Init(const MeasurementPackage &measurement_pack);
-  
 
+  /**
+  * Initialize weight vector
+  */
   VectorXd ComputeWeightVector();
 
   /**
-  * generate sigma points
+  * generate augmented sigma points
   */
   MatrixXd GenerateAugmentedSigmaPoints(const VectorXd& x, const MatrixXd& P,
                                         const VectorXd& process_noise);
 
+  /**
+  * generate prediction for all sigma points
+  */
+  MatrixXd PredictSigmaPoints(const MatrixXd& Xsig_aug, const double delta_t);
 
-  MatrixXd PredictSigmaPoints(const MatrixXd& Xsig_aug, double delta_t);
 
-
+  /**
+  * compute mean and covariance based on sigma points
+  */
   void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out,
                                 const MatrixXd& Xsig_pred);
 
-
+  /**
+  * reconstruct radar measurement from sigma points
+  */
   MatrixXd  ExtractRADARDataFromSigmaPoints(const MatrixXd& Xsig_pred);
 
-
+  /**
+  * reconstruct lidar measurement from sigma points
+  */
   MatrixXd  ExtractLIDARDataFromSigmaPoints(const MatrixXd& Xsig_pred);
 
 
+  /**
+  * compute the cross correlation matrix
+  */
   MatrixXd CalculateCrossCorrelationMatrix(const MatrixXd& Xsig,
                                            const VectorXd& x,
                                            const MatrixXd& Zsig,
                                            const VectorXd& z);
-
-
 };
 
 #endif /* UKF_H */

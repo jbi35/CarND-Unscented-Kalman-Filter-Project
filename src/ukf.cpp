@@ -45,11 +45,13 @@ UKF::UKF() {
   // Radar measurement noise standard deviation radius change in m/s
   std_radrd_ = 0.3;
 
+  // Radar covariance matrix
   R_radar_ = MatrixXd::Zero(3,3);
   R_radar_(0,0) = pow(std_radr_,2);
   R_radar_(1,1) = pow(std_radphi_,2);
   R_radar_(2,2) = pow(std_radrd_,2);
 
+  // Lidar covariance matrix
   R_lidar_ = MatrixXd::Zero(2,2);
   R_lidar_(0,0) = pow(std_laspx_, 2);
   R_lidar_(1,1) = pow(std_laspy_, 2);
@@ -69,8 +71,6 @@ UKF::UKF() {
   // store process noise in vector for convenience
   process_noise_ = VectorXd::Zero(2);
   process_noise_ << pow(std_a_, 2), pow(std_yawdd_, 2);
-
-  weights_ = ComputeWeightVector();
 
   is_initialized_ =false;
 }
@@ -121,10 +121,6 @@ void UKF::Prediction(double delta_t)
   Xsig_pred_ = PredictSigmaPoints(Xsig, delta_t);
 
   PredictMeanAndCovariance(&x_, &P_, Xsig_pred_);
-
-  //tools_.NormalizeAngle(x_, 3);
-
-  //P_ = PredictCovariance(Xsig_pred_, x_, weights_);
 }
 
 /**
@@ -198,6 +194,9 @@ void UKF::Init(const MeasurementPackage &measurement_pack)
   // init previous_timestamp_
   previous_timestamp_  = measurement_pack.timestamp_;
 
+  // init weights
+  weights_ = ComputeWeightVector();
+
   if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR)
   {
     /**
@@ -215,14 +214,13 @@ void UKF::Init(const MeasurementPackage &measurement_pack)
   else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER)
   {
     x_ <<  measurement_pack.raw_measurements_(0,0),
-          measurement_pack.raw_measurements_(1,0),
-          0.0, 0.0, 0.0;
+           measurement_pack.raw_measurements_(1,0),
+           0.0, 0.0, 0.0;
   }
 }
 
 VectorXd UKF::ComputeWeightVector()
 {
-
   VectorXd weights = VectorXd(2*n_aug_+1);
 
   // set weights
@@ -269,10 +267,9 @@ MatrixXd UKF::GenerateAugmentedSigmaPoints(const VectorXd& x, const MatrixXd& P,
     Xsig_aug.col(i + 1 + n_aug_) = x_aug - pre_fac * L.col(i);
   }
   return Xsig_aug;
-  // TODO thing about passing matrix using pointer
 }
 
-MatrixXd UKF::PredictSigmaPoints(const MatrixXd& Xsig_aug, double delta_t)
+MatrixXd UKF::PredictSigmaPoints(const MatrixXd& Xsig_aug, const double delta_t)
 {
   MatrixXd Xsig_pred = MatrixXd(n_x_, n_sigma_);
 
@@ -288,10 +285,10 @@ MatrixXd UKF::PredictSigmaPoints(const MatrixXd& Xsig_aug, double delta_t)
     double nu_a = Xsig_aug(5,i);
     double nu_yawdd = Xsig_aug(6,i);
 
-    //predicted state values
+    // predicted state values
     double px_p, py_p;
 
-    //avoid division by zero
+    // avoid division by zero
     if (fabs(yawd) > 0.001) {
         px_p = p_x + v/yawd * ( sin (yaw + yawd*delta_t) - sin(yaw));
         py_p = p_y + v/yawd * ( cos(yaw) - cos(yaw+yawd*delta_t) );
@@ -333,19 +330,20 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out,
 
   //predicted state mean
   x.fill(0.0);
+  //iterate over sigma points
   for (int i = 0; i < 2 * n_aug_ + 1; i++)
-  {  //iterate over sigma points
+  {
     x = x+ weights_(i) * Xsig_pred.col(i);
   }
 
   //predicted state covariance matrix
   P.fill(0.0);
+  //iterate over sigma points
   for (int i = 0; i < 2 * n_aug_ + 1; i++)
-  {  //iterate over sigma points
+  {
     // state difference
     VectorXd x_diff = Xsig_pred.col(i) - x;
     //angle normalization
-    //tools_.NormalizeAngle(x_diff,3)
     P = P + weights_(i) * x_diff * x_diff.transpose() ;
   }
 
@@ -354,7 +352,7 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out,
   *P_out = P;
 }
 
-MatrixXd  UKF::ExtractRADARDataFromSigmaPoints( const MatrixXd& Xsig_pred)
+MatrixXd  UKF::ExtractRADARDataFromSigmaPoints(const MatrixXd& Xsig_pred)
 {
   MatrixXd Zsig = MatrixXd(3,n_sigma_);
   //transform sigma points into measurement space
@@ -377,17 +375,14 @@ MatrixXd  UKF::ExtractRADARDataFromSigmaPoints( const MatrixXd& Xsig_pred)
   return Zsig;
 }
 
-MatrixXd  UKF::ExtractLIDARDataFromSigmaPoints( const MatrixXd& Xsig_pred)
+MatrixXd  UKF::ExtractLIDARDataFromSigmaPoints(const MatrixXd& Xsig_pred)
 {
   MatrixXd Zsig = MatrixXd(2,n_sigma_);
   for (int i = 0; i < n_sigma_ ; i++)
   {
-    // extract values for better readibility
-    double p_x = Xsig_pred(0,i);
-    double p_y = Xsig_pred(1,i);
     // measurement model
-    Zsig(0,i) = p_x; //x
-    Zsig(1,i) = p_y; //y
+    Zsig(0,i) = Xsig_pred(0,i); //p_x
+    Zsig(1,i) =  Xsig_pred(1,i); //p_y
   }
   return Zsig;
 }
